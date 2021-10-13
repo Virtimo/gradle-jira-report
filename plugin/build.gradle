@@ -1,4 +1,5 @@
 plugins {
+    id "com.gradle.plugin-publish" version "0.16.0"
     // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
     id 'java-gradle-plugin'
 
@@ -61,4 +62,17 @@ tasks.named('check') {
 tasks.named('test') {
     // Use junit platform for unit tests.
     useJUnitPlatform()
+}
+
+pluginBundle {
+    website = 'https://github.com/Virtimo/gradle-jira-report'
+    vcsUrl = 'https://github.com/Virtimo/gradle-jira-report'
+
+    plugins {
+        jiraReport {
+            displayName = 'Jira report plugin'
+            description = 'Create template powered reports (like changelogs) from your Jira issues'
+            tags = ['jira', 'report','changelog','template']
+        }
+    }
 }
