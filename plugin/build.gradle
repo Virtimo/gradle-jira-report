@@ -1,0 +1,64 @@
+plugins {
+    // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
+    id 'java-gradle-plugin'
+
+    // Apply the Groovy plugin to add support for Groovy
+    id 'groovy'
+
+    id 'maven-publish'
+
+}
+
+group = "de.virtimo"
+version = "1.0.0"
+
+repositories {
+    // Use Maven Central for resolving dependencies.
+    mavenCentral()
+}
+
+dependencies {
+    // Use the awesome Spock testing and specification framework
+    testImplementation 'org.spockframework:spock-core:2.0-M4-groovy-3.0'
+    testImplementation "com.github.tomakehurst:wiremock-jre8:2.31.0"
+    implementation 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.1'
+    implementation "org.freemarker:freemarker:2.3.31"
+
+}
+
+gradlePlugin {
+    // Define the plugin
+    plugins {
+        jiraReport {
+            id = 'de.virtimo.jira-report'
+            implementationClass = 'de.virtimo.JiraReportPlugin'
+        }
+    }
+}
+
+// Add a source set for the functional test suite
+sourceSets {
+    functionalTest {
+    }
+}
+
+gradlePlugin.testSourceSets(sourceSets.functionalTest)
+configurations.functionalTestImplementation.extendsFrom(configurations.testImplementation)
+
+// Add a task to run the functional tests
+tasks.register('functionalTest', Test) {
+    testClassesDirs = sourceSets.functionalTest.output.classesDirs
+    classpath = sourceSets.functionalTest.runtimeClasspath
+    environment = ["username": username, "password": password, "server": server]
+    useJUnitPlatform()
+}
+
+tasks.named('check') {
+    // Run the functional tests as part of `check`
+    dependsOn(tasks.functionalTest)
+}
+
+tasks.named('test') {
+    // Use junit platform for unit tests.
+    useJUnitPlatform()
+}

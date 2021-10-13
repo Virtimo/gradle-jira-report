@@ -1,0 +1,104 @@
+{
+  "expand": "schema,names",
+  "startAt": 0,
+  "maxResults": 50,
+  "total": 3,
+  "issues": [
+    {
+      "expand": "operations,versionedRepresentations,editmeta,changelog,renderedFields",
+      "key": "BPC-200",
+      "fields": {
+        "summary": "Summary 200",
+        "issuetype": {
+          "id": "5",
+          "name": "Sub-Task"
+        },
+        "components": [],
+        "fixVersions": [],
+        "resolution": {
+          "self": "https://virtimo.atlassian.net/rest/api/2/resolution/1",
+          "id": "1",
+          "description": "Eine Korrektur für dieses Problem wird in die Struktur eingebucht und getestet.",
+          "name": "Behoben"
+        },
+        "status": {
+          "name": "Geschlossen",
+          "id": "6",
+          "statusCategory": {
+            "self": "https://virtimo.atlassian.net/rest/api/2/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Fertig"
+          }
+        },
+        "labels": []
+      }
+    },
+
+    {
+      "expand": "operations,versionedRepresentations,editmeta,changelog,renderedFields",
+      "key": "BPC-201",
+      "fields": {
+        "summary": "Summary 201",
+        "issuetype": {
+          "id": "5",
+          "name": "Sub-Task"
+        },
+        "components": [],
+        "fixVersions": [],
+        "resolution": {
+          "self": "https://virtimo.atlassian.net/rest/api/2/resolution/1",
+          "id": "1",
+          "description": "Eine Korrektur für dieses Problem wird in die Struktur eingebucht und getestet.",
+          "name": "Behoben"
+        },
+        "status": {
+          "name": "Geschlossen",
+          "id": "6",
+          "statusCategory": {
+            "self": "https://virtimo.atlassian.net/rest/api/2/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Fertig"
+          }
+        },
+        "labels": []
+      }
+    },
+
+    {
+      "expand": "operations,versionedRepresentations,editmeta,changelog,renderedFields",
+      "key": "BPC-300",
+      "fields": {
+        "summary": "Summary 300",
+        "issuetype": {
+          "id": "5",
+          "name": "Sub-Task"
+        },
+        "components": [],
+        "fixVersions": [],
+        "resolution": {
+          "self": "https://virtimo.atlassian.net/rest/api/2/resolution/1",
+          "id": "1",
+          "description": "Eine Korrektur für dieses Problem wird in die Struktur eingebucht und getestet.",
+          "name": "Behoben"
+        },
+        "status": {
+          "name": "Geschlossen",
+          "id": "6",
+          "statusCategory": {
+            "self": "https://virtimo.atlassian.net/rest/api/2/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Fertig"
+          }
+        },
+        "labels": []
+      }
+    }
+
+  ]
+}
