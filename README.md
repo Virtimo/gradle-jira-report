@@ -13,37 +13,38 @@ plugins {
   id "de.virtimo.jira-report" version "1.0.0"
 }
 
-tasks.register("changelog",de.virtimo.task.JiraChangelog){
+tasks.register("changelog",de.virtimo.task.JiraReport){
             serverUrl = "https://virtimo.atlassian.net"
-            jiraProject = "FOO"
+            username = "$username"
+            password = "$password"
             fields = "*all"
             templateParams = [foo: "bar"]
             append = false
-            jql = "fixVersion = \"1.0.0\" ORDER BY priority DESC, key ASC"
-            destination = file("docs/changelog.adoc")
+            jql = "project = FOO and statusCategory = Done ORDER BY fixVersion DESC, issueType, key"
+            destination = file("CHANGELOG.md")
             templateFile = file("docs/changelog-template.ftl")
 }
 ```
 
-Add a Freemarker Template (https://freemarker.apache.org/) to docs/changelog-template.ftl.
-The fetched issues list is available as "issues" in the template. If a templateParams map is passed, it is accessible via "params".
+Add a Freemarker Template (https://freemarker.apache.org/) to your project (.e.g `docs/changelog-template.ftl`).
+The fetched issues list is available as "issues" in the template. If a templateParams map is passed, then all properties are accessible in the template.
 
-Example for an AsciiDoc formatted changelog
+Example for a MarkDown formatted changelog :
 ```
-= Changelog
+# Changelog
 
-== ${params.foo}
-
-=== Breaking Changes
-
-<#list issues?filter(i -> i.fields.labels?seq_contains("BreakingChange")) as issue>
-* [[${issue.key}]]${issue.key} - ${issue.fields.summary}
-</#list>
-
-=== Issues
-
-<#list issues) as issue>
-* [[${issue.key}]]${issue.key} - ${issue.fields.summary}
+<#assign lastIssuetype = ""/>
+<#assign lastFixVersion = ""/>
+<#list issues as issue>
+<#if lastFixVersion != issue.fields.fixVersions?map(v->v.name)?min!"No Version">
+<#assign lastFixVersion = issue.fields.fixVersions?map(v->v.name)?min!"No Version"/>
+## Version: ${lastFixVersion}
+</#if>
+<#if lastIssuetype != issue.fields.issuetype.name>
+<#assign lastIssuetype = issue.fields.issuetype.name/>
+### ${lastIssuetype}
+</#if>
+* [${issue.key}](https://mycompany.atlassian.net/issue/${issue.key}) - ${issue.fields.summary}
 </#list>
 ```
 

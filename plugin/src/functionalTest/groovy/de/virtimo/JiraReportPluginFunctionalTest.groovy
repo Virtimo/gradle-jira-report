@@ -25,7 +25,7 @@ class JiraReportPluginFunctionalTest extends Specification {
         wireMockServer.start()
 
         wireMockServer.stubFor(
-                get(urlPathMatching("/rest/api/2/.*"))
+                get(urlPathMatching("/rest/api/3/.*"))
                         .withBasicAuth("foo", "bar")
                         .willReturn(ok()
                                 .withHeader("Content-Type", "application/json")
@@ -69,8 +69,7 @@ class JiraReportPluginFunctionalTest extends Specification {
             
             tasks.register('testJira',de.virtimo.task.JiraReport) {
                     serverUrl = "http://localhost:8089"
-                    jiraProject = "BPC"
-                    jql = "updated < 2016-01-01"
+                    jql = "project = BPC and updated < 2016-01-01"
                     destination = file("build/issues.adoc")
                     templateFile = file("template.ftlh")
                     password = "bar"
@@ -95,8 +94,7 @@ class JiraReportPluginFunctionalTest extends Specification {
             
             tasks.register('testJira',de.virtimo.task.JiraReport) {
                     serverUrl = "http://localhost:8089"
-                    jiraProject = "BPC"
-                    jql = "updated < 2016-01-01"
+                    jql = "project = BPC and updated < 2016-01-01"
                     destination = file("build/issues.adoc")
                     templateFile = file("template.ftlh")
                     username = "foo"
@@ -120,8 +118,7 @@ class JiraReportPluginFunctionalTest extends Specification {
             
             tasks.register('testJira',de.virtimo.task.JiraReport) {
                     serverUrl = "http://localhost:8089"
-                    jiraProject = "BPC"
-                    jql = "updated < 2016-01-01"
+                    jql = "project = BPC and updated < 2016-01-01"
                     username = "wrongUser"
                     password = "wrongPassword"
                     destination = file("build/issues.adoc")
@@ -146,8 +143,7 @@ class JiraReportPluginFunctionalTest extends Specification {
             
             tasks.register('testJira',de.virtimo.task.JiraReport) {
                     serverUrl = "http://localhost:8089"
-                    jiraProject = "BPC"
-                    jql = "updated < 2016-01-01"
+                    jql = "project = BPC and updated < 2016-01-01"
                     username = "foo"
                     password = "bar"
                     destination = file("build/issues.adoc")
@@ -168,7 +164,7 @@ class JiraReportPluginFunctionalTest extends Specification {
         def result = runGradle(projectDir, "testJira")
 
         then:
-        result.output.contains("Created file")
+        new File(projectDir, "build/issues.adoc").exists()
     }
 
     @IgnoreIf({!env.username})
@@ -181,8 +177,7 @@ class JiraReportPluginFunctionalTest extends Specification {
             
             tasks.register('testJira',de.virtimo.task.JiraReport) {
                     serverUrl = "${System.getenv("server")}"
-                    jiraProject = "BPC"
-                    jql = "updated < 2016-01-01"
+                    jql = "project = BPC and updated < 2016-01-01"
                     username = "${System.getenv("username")}"
                     password = "${System.getenv("password")}"
                     destination = file("build/issues.adoc")
@@ -203,6 +198,6 @@ class JiraReportPluginFunctionalTest extends Specification {
         def result = runGradle(projectDir, "testJira")
 
         then:
-        result.output.contains("Created file")
+        new File(projectDir, "build/issues.adoc").exists()
     }
 }
