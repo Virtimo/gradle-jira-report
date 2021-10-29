@@ -15,8 +15,7 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
+  test:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
@@ -32,4 +31,8 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@e6e38bacfdf1a337459f332974bb2327a31aaf4b
       - name: Test with Gradle
+        env: 
+          ORG_GRADLE_PROJECT_username: ${{ secrets.JIRA_USERNAME }}
+          ORG_GRADLE_PROJECT_password: ${{ secrets.JIRA_API_TOKEN }}
+          ORG_GRADLE_PROJECT_server: https://gradle-plugin.atlassian.net
         run: ./gradlew check
