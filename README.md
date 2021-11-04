@@ -2,6 +2,8 @@
 
 Create template powered reports (e.g. Changelogs) from Jira issues.
 
+Also find the plugin at https://plugins.gradle.org/plugin/de.virtimo.jira-report
+
 Template Engine https://freemarker.apache.org/
 
 ## Usage
