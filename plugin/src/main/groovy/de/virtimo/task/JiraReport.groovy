@@ -5,9 +5,7 @@ import freemarker.template.Configuration
 import freemarker.template.Template
 import freemarker.template.TemplateException
 import freemarker.template.TemplateExceptionHandler
-import groovyx.net.http.AuthConfig
-import groovyx.net.http.EncoderRegistry
-import groovyx.net.http.RESTClient
+import groovy.json.JsonSlurper
 import org.gradle.api.DefaultTask
 import org.gradle.api.InvalidUserCodeException
 import org.gradle.api.file.RegularFileProperty
@@ -15,10 +13,13 @@ import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
 /**
  * @author Andre Schlegel-Tylla
  */
@@ -31,39 +32,38 @@ abstract class JiraReport extends DefaultTask{
     abstract Property<String> getJiraProject()
 
     @Input
-    @Optional
+    @org.gradle.api.tasks.Optional
     abstract Property<String> getJql()
 
     @Input
-    @Optional
+    @org.gradle.api.tasks.Optional
     abstract Property<String> getUsername()
 
     @Input
-    @Optional
+    @org.gradle.api.tasks.Optional
     abstract Property<String> getPassword()
 
     @Input
-    @Optional
+    @org.gradle.api.tasks.Optional
     abstract Property<String> getFields()
 
     @Input
-    @Optional
+    @org.gradle.api.tasks.Optional
     abstract Property<Boolean> getAppend()
 
     @InputFile
     abstract RegularFileProperty getTemplateFile()
 
     @Input
-    @Optional
+    @org.gradle.api.tasks.Optional
     abstract MapProperty<String,Object> getTemplateParams()
 
     @OutputFile
-    @Optional
+    @org.gradle.api.tasks.Optional
     abstract RegularFileProperty getDestination()
 
     @TaskAction
     def createReport() {
-        // lets prepare all params
         def file = getDestination().get().asFile
         file.parentFile.mkdirs()
 
@@ -71,39 +71,73 @@ abstract class JiraReport extends DefaultTask{
         project.logger.info("fields: ${jiraFields}")
 
         def jiraQuery = "project=${jiraProject.get()}"
-        if(jql.getOrNull() != null){
+        if (jql.getOrNull() != null) {
             jiraQuery = "${jiraQuery} AND ${jql.get()}"
         }
         project.logger.info("jiraQuery: ${jiraQuery}")
 
-        def String jiraUser = project.properties.username ?: username.getOrNull()
-        if(jiraUser == null){
-            throw new InvalidUserCodeException("Missing username")
+        String jiraUser = (project.properties['username'] as String) ?: username.getOrNull()
+        if (jiraUser == null || jiraUser.trim().isEmpty()) {
+            throw new InvalidUserCodeException("Missing username") as Throwable
         }
 
-        def String jiraPassword = project.properties.password ?: password.getOrNull()
-        if(jiraPassword == null){
-            throw new InvalidUserCodeException("Missing password")
+        String jiraPassword = (project.properties['password'] as String) ?: password.getOrNull()
+        if (jiraPassword == null || jiraPassword.trim().isEmpty()) {
+            throw new InvalidUserCodeException("Missing password") as Throwable
         }
 
-        def jiraREST = new RESTClient("${serverUrl.get()}/rest/api/2/")
-        jiraREST.headers = [
-                'Authorization'    : ('Basic ' + "${jiraUser}:${jiraPassword}".bytes.encodeBase64().toString())
-        ]
+        def normalizedBase = normalizeBaseUrl((project.properties['server'] as String) ?: serverUrl.get())
+        project.logger.info("serverUrl (normalized): ${normalizedBase}")
 
-        // get all issues
-        def responseOk = true
-        def startAt = 0
-        def data
-        def issues = []
-        do{
-            println("startAt " + startAt)
-            def res = jiraREST.get(path: "search", query: [fields: jiraFields, maxResults: 1000, startAt: startAt, jql: jiraQuery]) // AND fixVersion = "BPC 3.3.4"
-            data = res.getData()
-            issues.addAll(data.issues)
-            println("startAt=${data.startAt} - total=${data.total} - max=${data.maxResults}")
-            startAt = data.startAt + data.maxResults
-        } while (responseOk && (startAt < data.total))
+        HttpClient client = HttpClient.newBuilder().build()
+        def authToken = Base64.getEncoder().encodeToString("${jiraUser}:${jiraPassword}".getBytes(StandardCharsets.UTF_8))
+
+        int startAt = 0
+        Map data
+        List issues = []
+        def slurper = new JsonSlurper()
+        do {
+            project.logger.lifecycle("startAt ${startAt}")
+
+            Map<String, Object> queryMap = [
+                fields    : jiraFields,
+                maxResults: 1000,
+                startAt   : startAt,
+                jql       : jiraQuery
+            ] as Map<String, Object>
+            String params = queryMap.collect { k, v ->
+                "${URLEncoder.encode(k.toString(), 'UTF-8')}=${URLEncoder.encode(v.toString(), 'UTF-8')}"
+            }.join('&')
+
+            URI uri = URI.create("${normalizedBase}/rest/api/2/search?${params}")
+
+            HttpRequest request = HttpRequest.newBuilder(uri)
+                    .GET()
+                    .header("Authorization", "Basic ${authToken}")
+                    .header("Accept", "application/json")
+                    .build()
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() >= 400) {
+                throw new InvalidUserCodeException("Jira-Request fehlgeschlagen: HTTP ${response.statusCode()} - ${response.body()}") as Throwable
+            }
+
+            Map resObj = slurper.parseText(response.body()) as Map
+            data = resObj
+            List pageIssues = (resObj.issues instanceof List) ? (List) resObj.issues : []
+            issues.addAll(pageIssues)
+
+            int pageStart = asIntSafe(resObj.startAt)
+            int pageMax   = asIntSafe(resObj.maxResults)
+            int total     = asIntSafe(resObj.total)
+
+            project.logger.lifecycle("startAt=${pageStart} - total=${total} - max=${pageMax}")
+            startAt = pageStart + pageMax
+
+            if (total == 0) {
+                break
+            }
+        } while (startAt < asIntSafe(data.total))
 
         data.issues = issues
 
@@ -111,61 +145,61 @@ abstract class JiraReport extends DefaultTask{
             data.params = templateParams.get()
         }
 
-        if (data instanceof Map){
-            data.each {
-                key, value ->
-                    println("Found: " + key)
+        if (data instanceof Map) {
+            data.each { key, value ->
+                project.logger.debug("Found: ${key}")
             }
         }
 
-        println("Issue count: ${issues.size}")
+        project.logger.lifecycle("Issue count: ${issues.size}")
 
-        // Create your Configuration instance, and specify if up to what FreeMarker
-// version (here 2.3.29) do you want to apply the fixes that are not 100%
-// backward-compatible. See the Configuration JavaDoc for details.
-        Configuration cfg = new Configuration(Configuration.VERSION_2_3_29);
-
+        Configuration cfg = new Configuration(Configuration.VERSION_2_3_29)
         cfg.setDirectoryForTemplateLoading(project.projectDir)
-
-// From here we will set the settings recommended for new projects. These
-// aren't the defaults for backward compatibilty.
-
-// Set the preferred charset template files are stored in. UTF-8 is
-// a good choice in most applications:
-        cfg.setDefaultEncoding("UTF-8");
-
-// Sets how errors will appear.
-// During web page *development* TemplateExceptionHandler.HTML_DEBUG_HANDLER is better.
+        cfg.setDefaultEncoding("UTF-8")
         cfg.setTemplateExceptionHandler(
                 new TemplateExceptionHandler() {
-                    @Override
-                    public void handleTemplateException(TemplateException te, Environment env, Writer out)
+                    void handleTemplateException(TemplateException te, Environment env, Writer out)
                             throws TemplateException {
                         if (!env.isInAttemptBlock()) {
-                            PrintWriter pw = (out instanceof PrintWriter) ? (PrintWriter) out : new PrintWriter(out);
-                            pw.print("FreeMarker template error\n");
-                            te.printStackTrace(pw, false, true, false);
-                            pw.flush();  // To commit the HTTP response
+                            PrintWriter pw = (out instanceof PrintWriter) ? (PrintWriter) out : new PrintWriter(out)
+                            pw.print("FreeMarker template error\n")
+                            te.printStackTrace(pw, false, true, false)
+                            pw.flush()
                         }
-                    }}
-
-                    );
-
-// Don't log exceptions inside FreeMarker that it will thrown at you anyway:
-        cfg.setLogTemplateExceptions(false);
-
-// Wrap unchecked exceptions thrown during template processing into TemplateException-s:
-        cfg.setWrapUncheckedExceptions(true);
-
-// Do not fall back to higher scopes when reading a null loop variable:
-        cfg.setFallbackOnNullLoopVariable(false);
+                    }
+                }
+        )
+        cfg.setLogTemplateExceptions(false)
+        cfg.setWrapUncheckedExceptions(true)
+        cfg.setFallbackOnNullLoopVariable(false)
 
         Template temp = new Template("template", new FileReader(templateFile.get().asFile), cfg)
-
-        // new Template(name, READER, cfg);
         temp.process(data, new FileWriter(file, append.getOrElse(false)))
 
+        project.logger.lifecycle("Created file ${file}")
+    }
 
-        println("Created file ")
+    private static String normalizeBaseUrl(String raw) {
+        String s = (raw ?: "").trim()
+        if (s.equalsIgnoreCase("null") || s.isEmpty()) {
+            throw new InvalidUserCodeException("Missing serverUrl") as Throwable
+        }
+        if (!s.contains("://")) {
+            s = "https://${s}"
+        }
+        // Abschließende Slashes entfernen
+        return s.replaceAll(/\/+$/, '')
+    }
+
+    private static int asIntSafe(Object v) {
+        if (v instanceof Number) return ((Number) v).intValue()
+        if (v == null) return 0
+        def s = v.toString().trim()
+        if (s.isEmpty()) return 0
+        try {
+            return Integer.parseInt(s)
+        } catch (Exception ignore) {
+            return 0
+        }
     }
 }

@@ -19,7 +19,7 @@ import org.gradle.testkit.runner.GradleRunner
 class JiraReportPluginFunctionalTest extends Specification {
 
     @Shared
-    WireMockServer wireMockServer = new WireMockServer(wireMockConfig().port(8089));
+    WireMockServer wireMockServer = new WireMockServer(wireMockConfig().port(8089))
 
     def setupSpec() {
         wireMockServer.start()
@@ -34,7 +34,7 @@ class JiraReportPluginFunctionalTest extends Specification {
     }
 
     def cleanupSpec() {
-        wireMockServer.stop();
+        wireMockServer.stop()
     }
 
     def prepareProjectDir(buildScript, template) {
@@ -171,7 +171,7 @@ class JiraReportPluginFunctionalTest extends Specification {
         result.output.contains("Created file")
     }
 
-    @IgnoreIf({!env.username})
+    @IgnoreIf({ !env.username?.trim() || !env.password?.trim() || !env.server?.trim() })
     def "real world test"() {
         given:
         def projectDir = prepareProjectDir("""

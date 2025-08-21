@@ -1,78 +1,68 @@
 plugins {
-    id "com.gradle.plugin-publish" version "0.16.0"
-    // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
+    id "com.gradle.plugin-publish" version "1.2.1"
     id 'java-gradle-plugin'
-
-    // Apply the Groovy plugin to add support for Groovy
     id 'groovy'
-
     id 'maven-publish'
-
 }
 
 group = "de.virtimo"
 version = "1.0.1-SNAPSHOT"
 
 repositories {
-    // Use Maven Central for resolving dependencies.
     mavenCentral()
 }
 
-dependencies {
-    // Use the awesome Spock testing and specification framework
-    testImplementation 'org.spockframework:spock-core:2.0-M4-groovy-3.0'
-    testImplementation "com.github.tomakehurst:wiremock-jre8:2.31.0"
-    implementation 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.1'
-    implementation "org.freemarker:freemarker:2.3.31"
-
-}
-
-gradlePlugin {
-    // Define the plugin
-    plugins {
-        jiraReport {
-            id = 'de.virtimo.jira-report'
-            implementationClass = 'de.virtimo.JiraReportPlugin'
-        }
-    }
-}
-
-// Add a source set for the functional test suite
 sourceSets {
     functionalTest {
     }
 }
 
-gradlePlugin.testSourceSets(sourceSets.functionalTest)
 configurations.functionalTestImplementation.extendsFrom(configurations.testImplementation)
+configurations.functionalTestRuntimeOnly.extendsFrom(configurations.testRuntimeOnly)
 
-// Add a task to run the functional tests
+dependencies {
+    testImplementation 'org.spockframework:spock-core:2.3-groovy-4.0'
+    testImplementation "com.github.tomakehurst:wiremock-jre8:2.31.0"
+    implementation "org.freemarker:freemarker:2.3.31"
+
+    add('testRuntimeOnly', 'org.junit.platform:junit-platform-launcher:1.10.2')
+    add('functionalTestRuntimeOnly', 'org.junit.platform:junit-platform-launcher:1.10.2')
+    add('functionalTestImplementation', gradleTestKit())
+}
+
+gradlePlugin {
+    plugins {
+        jiraReport {
+            id = 'de.virtimo.jira-report'
+            implementationClass = 'de.virtimo.JiraReportPlugin'
+            displayName = 'Jira report plugin'
+            description = 'Create template powered reports (like changelogs) from your Jira issues'
+            tags.set(['jira', 'report', 'changelog', 'template'])
+        }
+    }
+    website = 'https://github.com/Virtimo/gradle-jira-report'
+    vcsUrl = 'https://github.com/Virtimo/gradle-jira-report'
+}
+
 tasks.register('functionalTest', Test) {
     testClassesDirs = sourceSets.functionalTest.output.classesDirs
     classpath = sourceSets.functionalTest.runtimeClasspath
-    environment = ["username": username, "password": password, "server": server]
+
+    environment.clear()
+    def u = providers.gradleProperty("username").orNull
+    def p = providers.gradleProperty("password").orNull
+    def s = providers.gradleProperty("server").orNull
+    if (u?.trim()) environment "username", u
+    if (p?.trim()) environment "password", p
+    if (s?.trim()) environment "server", s
+
     useJUnitPlatform()
 }
 
 tasks.named('check') {
-    // Run the functional tests as part of `check`
     dependsOn(tasks.functionalTest)
 }
 
 tasks.named('test') {
-    // Use junit platform for unit tests.
     useJUnitPlatform()
-}
-
-pluginBundle {
-    website = 'https://github.com/Virtimo/gradle-jira-report'
-    vcsUrl = 'https://github.com/Virtimo/gradle-jira-report'
-
-    plugins {
-        jiraReport {
-            displayName = 'Jira report plugin'
-            description = 'Create template powered reports (like changelogs) from your Jira issues'
-            tags = ['jira', 'report','changelog','template']
-        }
-    }
 }
