@@ -12,7 +12,7 @@ Add this plugin to your project and use the task type de.virtimo.task.JiraReport
 
 ```gradle
 plugins {
-  id "de.virtimo.jira-report" version "1.0.0"
+  id "de.virtimo.jira-report" version "1.0.1"
 }
 
 tasks.register("changelog",de.virtimo.task.JiraChangelog){
