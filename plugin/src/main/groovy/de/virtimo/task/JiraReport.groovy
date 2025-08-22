@@ -106,10 +106,10 @@ abstract class JiraReport extends DefaultTask{
                 jql       : jiraQuery
             ] as Map<String, Object>
             String params = queryMap.collect { k, v ->
-                "${URLEncoder.encode(k.toString(), 'UTF-8')}=${URLEncoder.encode(v.toString(), 'UTF-8')}"
+                "${URLEncoder.encode(k.toString(), StandardCharsets.UTF_8)}=${URLEncoder.encode(v.toString(), StandardCharsets.UTF_8)}"
             }.join('&')
 
-            URI uri = URI.create("${normalizedBase}/rest/api/2/search?${params}")
+            URI uri = URI.create("${normalizedBase}/rest/api/3/search/jql?${params}")
 
             HttpRequest request = HttpRequest.newBuilder(uri)
                     .GET()
@@ -151,11 +151,11 @@ abstract class JiraReport extends DefaultTask{
             }
         }
 
-        project.logger.lifecycle("Issue count: ${issues.size}")
+        project.logger.lifecycle("Issue count: ${issues.size()}")
 
         Configuration cfg = new Configuration(Configuration.VERSION_2_3_29)
         cfg.setDirectoryForTemplateLoading(project.projectDir)
-        cfg.setDefaultEncoding("UTF-8")
+        cfg.setDefaultEncoding(StandardCharsets.UTF_8.name())
         cfg.setTemplateExceptionHandler(
                 new TemplateExceptionHandler() {
                     void handleTemplateException(TemplateException te, Environment env, Writer out)
