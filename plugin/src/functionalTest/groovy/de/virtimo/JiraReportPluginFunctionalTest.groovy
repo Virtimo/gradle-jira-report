@@ -25,7 +25,7 @@ class JiraReportPluginFunctionalTest extends Specification {
         wireMockServer.start()
 
         wireMockServer.stubFor(
-                get(urlPathMatching("/rest/api/2/.*"))
+                get(urlPathMatching("/rest/api/3/search/jql\\\\?.*"))
                         .withBasicAuth("foo", "bar")
                         .willReturn(ok()
                                 .withHeader("Content-Type", "application/json")
